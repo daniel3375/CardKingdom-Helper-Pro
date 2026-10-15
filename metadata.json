@@ -1,0 +1,6 @@
+{
+  "name": "Manabr✧s · Card Kingdom Buy Assistant",
+  "description": "Sistema moderno para compras grupales, re-escaneo de precios y carga desatendida en Card Kingdom para Manabr✧s Store.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,6 @@
+{
+  "summary": "Plan integral de implementación para actualizar y alinear la aplicación PurchasesManabros con el documento de especificación funcional y de negocio al 100%. Cubre modelos Firestore, ciclo de vida de órdenes (pending/active/purchased/finalized), gestión de usuarios y saldos a favor, reparto de envío proporcional por cartas, abonos separados de cartas y envío, pantalla de ajustes, y sincronización del código Flutter de referencia.",
+  "updatedAt": "2026-10-15T18:01:31.356474120Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
