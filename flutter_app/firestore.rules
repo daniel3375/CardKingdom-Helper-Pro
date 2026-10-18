@@ -1,0 +1,153 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isConfirmed() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'confirmed';
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'balance']));
+      allow delete: if isAdmin();
+    }
+
+    match /purchase_orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+      
+      match /items/{itemId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isConfirmed() && resource.data.status != 'finalized';
+        allow delete: if (isAdmin() || (isAuthenticated() && resource.data.buyerEmail == request.auth.token.email)) && resource.data.status != 'finalized';
+      }
+
+      match /payments/{paymentId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() && get(/databases/$(database)/documents/purchase_orders/$(orderId)).data.status != 'finalized';
+      }
+    }
+
+    match /balance_movements/{movementId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.email == request.auth.token.email);
+      allow write: if isAdmin();
+    }
+
+    match /app_settings/{document} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
+`,
+    },
+  };
+
+  const filteredFiles = Object.entries(flutterFiles).filter(([key, f]) => {
+    const matchesCategory = activeCategory === 'all' || f.category === activeCategory;
+    const matchesSearch = searchFilter === '' ||
+      f.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      f.filename.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      f.desc.toLowerCase().includes(searchFilter.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const currentFile = flutterFiles[activeFile] || (filteredFiles.length > 0 ? filteredFiles[0][1] : flutterFiles['order_detail_screen']);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(currentFile.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-150">
+      {/* Intro info */}
+      <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-500/40 px-3 py-1 rounded-full mb-3">
+            <Smartphone className="w-3.5 h-3.5" />
+            <span className="uppercase tracking-wider">PurchasesManabros · Arquitectura Flutter & Dart Completa</span>
+          </div>
+          <h2 className="text-xl font-extrabold text-white tracking-tight">
+            Componentes y Pantallas en Flutter (Dart)
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
+            Todos los componentes y pantallas de la aplicación web implementados en código Flutter nativo: reglas de upsert, FirestoreService, tarjetas de comprador, modal de abonos, pantallas de detalle, historial de órdenes, carga masiva y navegador Card Kingdom.
+          </p>
+        </div>
+
+        <button
+          onClick={copyToClipboard}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-[#0D1117] text-xs font-bold rounded-xl transition-colors shadow-sm shrink-0"
+        >
+          {copied ? <Check className="w-4 h-4 text-emerald-950" /> : <Copy className="w-4 h-4" />}
+          <span>{copied ? '¡Copiado!' : 'Copiar Archivo Actual'}</span>
+        </button>
+      </div>
+
+      {/* Category Pills & Search */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#161B22] border border-[#30363D] p-3 rounded-2xl">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+          {[
+            { id: 'all', label: 'Todos', icon: Layers },
+            { id: 'screens', label: 'Pantallas (Screens)', icon: Monitor },
+            { id: 'widgets', label: 'Widgets & Cards', icon: Box },
+            { id: 'services', label: 'Servicios', icon: Code2 },
+            { id: 'rules', label: 'Reglas Firestore', icon: ShieldCheck },
+          ].map((cat) => {
+            const IconComponent = cat.icon;
+            const isSelected = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActiveCategory(cat.id as any)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-amber-400 text-[#0D1117] font-bold shadow-sm'
+                    : 'bg-[#21262D] text-slate-300 hover:text-white border border-[#30363D]'
+                }`}
+              >
+                <IconComponent className="w-3.5 h-3.5" />
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative w-full sm:w-56 shrink-0">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar componente..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="w-full bg-[#0D1117] border border-[#30363D] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+          />
+        </div>
+      </div>
+
+      {/* Files List Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#30363D]">
+        {filteredFiles.map(([key, f]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveFile(key)}
+            className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeFile === key
+                ? 'bg-amber-400 text-[#0D1117] font-bold shadow-sm'
+                : 'bg-[#161B22] text-slate-400 hover:text-white border border-[#30363D]'
+            }

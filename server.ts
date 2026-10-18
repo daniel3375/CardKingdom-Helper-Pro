@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import * as cheerio from 'cheerio';
 
@@ -212,6 +213,17 @@ async function startServer() {
 })();
     `;
     return res.json({ script });
+  });
+
+  // API Route: Download complete physical Flutter project archive
+  app.get('/api/download-flutter-archive', (_req: Request, res: Response) => {
+    const archivePath = path.resolve(__dirname, 'flutter_app.tar.gz');
+    if (!fs.existsSync(archivePath)) {
+      return res.status(404).json({ error: 'El archivo comprimido de Flutter aún no ha sido generado.' });
+    }
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', 'attachment; filename="manabros_flutter_app.tar.gz"');
+    res.download(archivePath, 'manabros_flutter_app.tar.gz');
   });
 
   // Vite middleware in development
