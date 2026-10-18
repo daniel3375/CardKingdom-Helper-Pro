@@ -184,4 +184,83 @@ class FirestoreService {
   Future<void> deletePayment(String orderId, String paymentId) async {
     await _db.collection('purchase_orders').doc(orderId).collection('payments').doc(paymentId).delete();
   }
+
+  // ==========================================
+  // USUARIOS Y SALDOS (§1.1, §3.2, §5.8)
+  // ==========================================
+
+  Stream<List<UserProfile>> getUsersStream() {
+    return _db
+        .collection('users')
+        .orderBy('displayName')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => UserProfile.fromFirestore(doc)).toList());
+  }
+
+  Future<void> confirmUser(String uid) async {
+    await _db.collection('users').doc(uid).update({
+      'status': 'confirmed',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateUserRole(String uid, String newRole) async {
+    await _db.collection('users').doc(uid).update({
+      'role': newRole,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<List<BalanceMovement>> getUserMovementsStream(String email) {
+    return _db
+        .collection('balance_movements')
+        .where('email', isEqualTo: email)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => BalanceMovement.fromFirestore(doc)).toList());
+  }
+
+  Future<void> addBalanceMovement({
+    required String userUid,
+    required String userEmail,
+    required double amount,
+    required String type, // 'credit' | 'outflow'
+    required String description,
+    required String registeredBy,
+    String? orderId,
+  }) async {
+    final userRef = _db.collection('users').doc(userUid);
+    final movementRef = _db.collection('balance_movements').doc();
+
+    await _db.runTransaction((transaction) async {
+      final userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) {
+        throw Exception('El usuario no existe');
+      }
+
+      final currentBalance = (userDoc.data()?['balance'] as num?)?.toDouble() ?? 0.0;
+      final newBalance = type == 'credit'
+          ? (currentBalance + amount)
+          : (currentBalance - amount);
+
+      if (type == 'outflow' && newBalance < -0.001) {
+        throw Exception('El monto supera el saldo disponible');
+      }
+
+      transaction.update(userRef, {
+        'balance': max(0.0, newBalance),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      transaction.set(movementRef, {
+        'email': userEmail,
+        'type': type,
+        'amount': amount,
+        'description': description,
+        'orderId': orderId,
+        'registeredBy': registeredBy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
 }

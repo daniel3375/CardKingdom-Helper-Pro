@@ -275,6 +275,61 @@ class Payment {
   }
 }
 
+/// Movimiento de Saldo a Favor (§1.1, §5.8)
+class BalanceMovement {
+  final String id;
+  final String email;
+  final String type; // 'credit' | 'outflow'
+  final double amount;
+  final String description;
+  final String? orderId;
+  final String registeredBy;
+  final DateTime createdAt;
+
+  BalanceMovement({
+    required this.id,
+    required this.email,
+    required this.type,
+    required this.amount,
+    required this.description,
+    this.orderId,
+    required this.registeredBy,
+    required this.createdAt,
+  });
+
+  bool get isCredit => type == 'credit';
+
+  factory BalanceMovement.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return BalanceMovement(
+      id: doc.id,
+      email: data['email'] ?? '',
+      type: data['type'] ?? 'credit',
+      amount: (data['amount'] is num) ? (data['amount'] as num).toDouble() : 0.0,
+      description: data['description'] ?? '',
+      orderId: data['orderId'],
+      registeredBy: data['registeredBy'] ?? '',
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] is Timestamp
+              ? (data['createdAt'] as Timestamp).toDate()
+              : DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'email': email,
+      'type': type,
+      'amount': amount,
+      'description': description,
+      if (orderId != null) 'orderId': orderId,
+      'registeredBy': registeredBy,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
+}
+
 /// Ajustes de la Aplicación (§5.9)
 class AppSettings {
   final bool historyEnabled;
