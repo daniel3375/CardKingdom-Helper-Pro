@@ -7,6 +7,8 @@ import '../widgets/buyer_breakdown_card.dart';
 import '../widgets/shipping_management_card.dart';
 import '../widgets/order_payments_modal.dart';
 import '../widgets/register_payment_dialog.dart';
+import '../widgets/price_rescraper_dialog.dart';
+import 'ck_webview_screen.dart';
 
 /// Pantalla Principal del Detalle de Orden Activa (§5.1, §5.2, §5.3)
 class OrderDetailScreen extends StatefulWidget {
@@ -98,7 +100,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     title: Row(
                       children: [
                         Text(
-                          'ORDEN \\\${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}',
+                          'ORDEN \\\\\\\${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                         ),
                         const SizedBox(width: 8),
@@ -152,7 +154,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'Re-escaneando precios en Card Kingdom (\\$_rescrapeProgress / \\$_rescrapeTotal)...',
+                                'Re-escaneando precios en Card Kingdom (\\\\$_rescrapeProgress / \\\\$_rescrapeTotal)...',
                                 style: const TextStyle(fontSize: 12, color: Colors.white),
                               ),
                             ],
@@ -221,7 +223,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 children: [
                   const Text('Total Consolidado', style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
                   Text(
-                    '\\\\$\\\${totalAmount.toStringAsFixed(2)} USD',
+                    '\\\\\\\\$\\\\\\\${totalAmount.toStringAsFixed(2)} USD',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'monospace'),
                   ),
                 ],
@@ -229,10 +231,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Abonado: \\\\$\\\${totalPaid.toStringAsFixed(2)} USD',
+                  Text('Abonado: \\\\\\\\$\\\\\\\${totalPaid.toStringAsFixed(2)} USD',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isCovered ? const Color(0xFF34D399) : const Color(0xFFFBBF24))),
                   Text(
-                    'Faltante: \\\\$\\\${(totalAmount - totalPaid > 0 ? totalAmount - totalPaid : 0.0).toStringAsFixed(2)} USD',
+                    'Faltante: \\\\\\\\$\\\\\\\${(totalAmount - totalPaid > 0 ? totalAmount - totalPaid : 0.0).toStringAsFixed(2)} USD',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
                   ),
                 ],
@@ -341,20 +343,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   children: [
                     Text(item.cardName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
                     const SizedBox(height: 2),
-                    Text('\\\${item.edition} · \\\${item.condition} \\\${item.foil ? "• FOIL" : ""}',
+                    Text('\\\\\\\${item.edition} · \\\\\\\${item.condition} \\\\\\\${item.foil ? "• FOIL" : ""}',
                         style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
                     const SizedBox(height: 4),
-                    Text('Comprador: \\\${item.buyerName}', style: const TextStyle(fontSize: 11, color: Color(0xFF58A6FF))),
+                    Text('Comprador: \\\\\\\${item.buyerName}', style: const TextStyle(fontSize: 11, color: Color(0xFF58A6FF))),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('\\\${item.quantity}x \\\\$\\\${item.price.toStringAsFixed(2)}',
+                  Text('\\\\\\\${item.quantity}x \\\\\\\\$\\\\\\\${item.price.toStringAsFixed(2)}',
                       style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('\\\\$\\\${(item.price * item.quantity).toStringAsFixed(2)} USD',
+                  Text('\\\\\\\\$\\\\\\\${(item.price * item.quantity).toStringAsFixed(2)} USD',
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF34D399))),
                 ],
               ),
@@ -388,11 +390,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               children: [
                 _buildSummaryRow('Estado de la Orden', order.status.toUpperCase()),
                 _buildSummaryRow('Fecha de Creación', DateFormat('dd/MM/yyyy HH:mm').format(order.createdAt)),
-                _buildSummaryRow('Total Cartas', '\\$totalCards unidades'),
-                _buildSummaryRow('Subtotal Cartas', '\\\\$\\\${totalCardsAmount.toStringAsFixed(2)} USD'),
-                _buildSummaryRow('Costo de Envío Global', '\\\\$\\\${shippingCost.toStringAsFixed(2)} USD'),
+                _buildSummaryRow('Total Cartas', '\\\\$totalCards unidades'),
+                _buildSummaryRow('Subtotal Cartas', '\\\\\\\\$\\\\\\\${totalCardsAmount.toStringAsFixed(2)} USD'),
+                _buildSummaryRow('Costo de Envío Global', '\\\\\\\\$\\\\\\\${shippingCost.toStringAsFixed(2)} USD'),
                 const Divider(color: Color(0xFF30363D), height: 24),
-                _buildSummaryRow('TOTAL GLOBAL A PAGAR', '\\\\$\\\${(totalCardsAmount + shippingCost).toStringAsFixed(2)} USD', isBold: true),
+                _buildSummaryRow('TOTAL GLOBAL A PAGAR', '\\\\\\\\$\\\\\\\${(totalCardsAmount + shippingCost).toStringAsFixed(2)} USD', isBold: true),
               ],
             ),
           ),
@@ -475,33 +477,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
     await _firestore.updateOrderStatus(order.id, nextStatus);
   }
 
-  void _triggerPriceRescrape(List<OrderItem> items) async {
-    setState(() {
-      _isRescraping = true;
-      _rescrapeProgress = 0;
-      _rescrapeTotal = items.where((i) => i.needsPriceRefresh).length;
-    });
-
-    try {
-      await for (final res in PriceRescraperService.rescrapeEligibleItems(items)) {
-        await _firestore.updateItemPriceAndStock(
-          orderId: widget.orderId,
-          itemId: res.item.id,
-          newPrice: res.currentPrice,
-          inStock: res.inStock,
-          availableQty: res.stockCount,
+  void _triggerPriceRescrape(List<OrderItem> items) {
+    PriceRescraperDialog.show(
+      context,
+      orderId: widget.orderId,
+      items: items,
+      onProceedToCartPusher: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CkWebViewScreen(
+              activeOrderId: widget.orderId,
+              currentUserEmail: widget.currentUserEmail,
+              currentUserName: '',
+              isAdmin: widget.isAdmin,
+            ),
+          ),
         );
-        setState(() {
-          _rescrapeProgress++;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRescraping = false;
-        });
-      }
-    }
+      },
+    );
   }
 
   Widget _buildStatusBadge(String status) {

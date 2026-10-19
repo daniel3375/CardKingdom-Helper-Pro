@@ -195,6 +195,13 @@ class OrderItem {
     );
   }
 
+  bool get needsPriceRefresh {
+    if (pageUrl.trim().isEmpty) return false;
+    if (refreshStatus != 'ok') return true;
+    final diffHours = DateTime.now().difference(lastCheckedAt).inMinutes / 60.0;
+    return diffHours >= 1.0;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'orderId': orderId,
