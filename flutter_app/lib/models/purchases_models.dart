@@ -406,3 +406,87 @@ OrderUrgency getOrderUrgency(DateTime? estimatedDate) {
     );
   }
 }
+
+/// Variación de Estado y Acabado de Carta Scrapeada (§5.2, §5.9)
+class CardVariation {
+  final String condition; // 'NM' | 'EX' | 'VG' | 'G'
+  final double price;
+  final int stock;
+  final bool isFoil;
+
+  CardVariation({
+    required this.condition,
+    required this.price,
+    required this.stock,
+    required this.isFoil,
+  });
+
+  bool get inStock => stock > 0;
+
+  factory CardVariation.fromMap(Map<String, dynamic> map) {
+    return CardVariation(
+      condition: map['condition'] ?? 'NM',
+      price: (map['price'] is num) ? (map['price'] as num).toDouble() : 0.0,
+      stock: (map['stock'] is num) ? (map['stock'] as num).toInt() : 0,
+      isFoil: map['isFoil'] == true,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'condition': condition,
+      'price': price,
+      'stock': stock,
+      'isFoil': isFoil,
+    };
+  }
+}
+
+/// Carta Scrapeada desde Card Kingdom (§5.2, §5.9)
+class ScrapedCKCard {
+  final String title;
+  final String setName;
+  final String cardType;
+  final String productId;
+  final String imageUrl;
+  final String url;
+  final List<CardVariation> variations;
+
+  ScrapedCKCard({
+    required this.title,
+    required this.setName,
+    this.cardType = 'Magic: The Gathering',
+    this.productId = '',
+    this.imageUrl = '',
+    required this.url,
+    required this.variations,
+  });
+
+  factory ScrapedCKCard.fromMap(Map<String, dynamic> map) {
+    final list = (map['variations'] as List<dynamic>?)
+            ?.map((v) => CardVariation.fromMap(Map<String, dynamic>.from(v)))
+            .toList() ??
+        [];
+    return ScrapedCKCard(
+      title: map['title'] ?? map['cardName'] ?? map['name'] ?? '',
+      setName: map['setName'] ?? map['edition'] ?? 'Card Kingdom',
+      cardType: map['cardType'] ?? 'Magic: The Gathering',
+      productId: map['productId']?.toString() ?? '',
+      imageUrl: map['imageUrl'] ?? '',
+      url: map['url'] ?? '',
+      variations: list,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'setName': setName,
+      'cardType': cardType,
+      'productId': productId,
+      'imageUrl': imageUrl,
+      'url': url,
+      'variations': variations.map((v) => v.toMap()).toList(),
+    };
+  }
+}

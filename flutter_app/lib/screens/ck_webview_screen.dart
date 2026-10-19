@@ -4,6 +4,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../models/purchases_models.dart';
 import '../services/firestore_service.dart';
 import '../services/ck_cart_pusher.dart';
+import '../widgets/scraped_card_capture_card.dart';
 
 /// Pantalla del Navegador In-App para Card Kingdom (§5.9, §5.10)
 class CkWebViewScreen extends StatefulWidget {
@@ -11,6 +12,8 @@ class CkWebViewScreen extends StatefulWidget {
   final String currentUserEmail;
   final String currentUserName;
   final bool isAdmin;
+  final UserProfile? currentUser;
+  final List<UserProfile> allUsers;
 
   const CkWebViewScreen({
     super.key,
@@ -18,6 +21,8 @@ class CkWebViewScreen extends StatefulWidget {
     required this.currentUserEmail,
     required this.currentUserName,
     required this.isAdmin,
+    this.currentUser,
+    this.allUsers = const [],
   });
 
   @override
@@ -155,69 +160,109 @@ class _CkWebViewScreenState extends State<CkWebViewScreen> {
               bottom: 16,
               left: 16,
               right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161B22).withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFBBF24)),
-                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4))],
-                ),
-                child: Row(
-                  children: [
-                    if (_detectedCard!['imageUrl'] != null && _detectedCard!['imageUrl'].isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(_detectedCard!['imageUrl'], width: 36, height: 50, fit: BoxFit.cover),
+              child: InkWell(
+                onTap: _openFullCaptureModal,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22).withOpacity(0.96),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFBBF24)),
+                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4))],
+                  ),
+                  child: Row(
+                    children: [
+                      if (_detectedCard!['imageUrl'] != null && _detectedCard!['imageUrl'].isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(_detectedCard!['imageUrl'], width: 36, height: 50, fit: BoxFit.cover),
+                        ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _detectedCard!['cardName'] ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                                  ),
+                                  child: const Text('DETECTADA', style: TextStyle(color: Color(0xFFFBBF24), fontSize: 9, fontWeight: FontWeight.bold)),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Toca para configurar', style: TextStyle(color: Color(0xFF8B949E), fontSize: 11)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _detectedCard!['cardName'] ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              DropdownButton<String>(
-                                value: _selectedCondition,
-                                dropdownColor: const Color(0xFF161B22),
-                                underline: const SizedBox(),
-                                style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11, fontWeight: FontWeight.bold),
-                                items: const ['NM', 'EX', 'VG', 'G'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                onChanged: (v) {
-                                  if (v != null) setState(() => _selectedCondition = v);
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              Text('Cant: \$_selectedQty', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                            ],
-                          ),
-                        ],
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.tune, size: 14),
+                        label: const Text('Pedir Carta', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFBBF24),
+                          foregroundColor: const Color(0xFF0D1117),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: _openFullCaptureModal,
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add_shopping_cart, size: 14),
-                      label: const Text('Añadir a Orden', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFBBF24),
-                        foregroundColor: const Color(0xFF0D1117),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      onPressed: _addDetectedCardToOrder,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  void _openFullCaptureModal() {
+    if (_detectedCard == null) return;
+    final card = ScrapedCKCard(
+      title: _detectedCard!['cardName'] ?? 'Carta CK',
+      setName: _detectedCard!['setName'] ?? 'Card Kingdom',
+      cardType: _detectedCard!['cardType'] ?? 'Magic Card',
+      productId: _detectedCard!['productId'] ?? '',
+      imageUrl: _detectedCard!['imageUrl'] ?? '',
+      url: _detectedCard!['url'] ?? '',
+      variations: [
+        CardVariation(condition: 'NM', price: (_detectedCard!['price'] as num?)?.toDouble() ?? 1.0, stock: 4, isFoil: false),
+        CardVariation(condition: 'EX', price: ((_detectedCard!['price'] as num?)?.toDouble() ?? 1.0) * 0.9, stock: 2, isFoil: false),
+        CardVariation(condition: 'VG', price: ((_detectedCard!['price'] as num?)?.toDouble() ?? 1.0) * 0.8, stock: 1, isFoil: false),
+        CardVariation(condition: 'NM', price: ((_detectedCard!['price'] as num?)?.toDouble() ?? 1.0) * 2.5, stock: 1, isFoil: true),
+      ],
+    );
+
+    ScrapedCardCaptureCard.showAsBottomSheet(
+      context,
+      card: card,
+      activeOrderId: widget.activeOrderId,
+      currentUser: widget.currentUser ??
+          UserProfile(
+            uid: 'user',
+            email: widget.currentUserEmail,
+            displayName: widget.currentUserName,
+            photoURL: '',
+            role: widget.isAdmin ? 'admin' : 'comprador',
+            status: 'confirmed',
+            balance: 0.0,
+            createdAt: DateTime.now(),
+          ),
+      allUsers: widget.allUsers,
     );
   }
 }
