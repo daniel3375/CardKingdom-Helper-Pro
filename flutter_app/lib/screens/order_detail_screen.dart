@@ -8,6 +8,7 @@ import '../widgets/shipping_management_card.dart';
 import '../widgets/order_payments_modal.dart';
 import '../widgets/register_payment_dialog.dart';
 import '../widgets/price_rescraper_dialog.dart';
+import '../widgets/one_by_one_cart_pusher_dialog.dart';
 import 'ck_webview_screen.dart';
 
 /// Pantalla Principal del Detalle de Orden Activa (§5.1, §5.2, §5.3)
@@ -100,7 +101,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                     title: Row(
                       children: [
                         Text(
-                          'ORDEN \\\\\\\${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}',
+                          'ORDEN \${order.id.substring(0, order.id.length > 8 ? 8 : order.id.length).toUpperCase()}',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                         ),
                         const SizedBox(width: 8),
@@ -108,12 +109,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                       ],
                     ),
                     actions: [
-                      if (widget.isAdmin)
+                      if (widget.isAdmin) ...[
+                        IconButton(
+                          icon: const Icon(Icons.price_change_outlined, color: Color(0xFFFBBF24)),
+                          tooltip: 'Actualizar Precios CK (§5.9)',
+                          onPressed: () => _triggerPriceRescrape(items),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFF38BDF8)),
+                          tooltip: 'Lanzador 1 a 1 a Card Kingdom (§5.10)',
+                          onPressed: () => _triggerCartPusher(items),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.payments_rounded, color: Color(0xFF34D399)),
                           tooltip: 'Gestión de Abonos',
                           onPressed: () => _openPaymentsModal(context, order, items, payments),
                         ),
+                      ],
                     ],
                     bottom: TabBar(
                       controller: _tabController,
@@ -154,7 +166,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'Re-escaneando precios en Card Kingdom (\\\\$_rescrapeProgress / \\\\$_rescrapeTotal)...',
+                                'Re-escaneando precios en Card Kingdom ($_rescrapeProgress / $_rescrapeTotal)...',
                                 style: const TextStyle(fontSize: 12, color: Colors.white),
                               ),
                             ],
@@ -223,7 +235,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                 children: [
                   const Text('Total Consolidado', style: TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
                   Text(
-                    '\\\\\\\\$\\\\\\\${totalAmount.toStringAsFixed(2)} USD',
+                    '$\${totalAmount.toStringAsFixed(2)} USD',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'monospace'),
                   ),
                 ],
@@ -231,10 +243,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Abonado: \\\\\\\\$\\\\\\\${totalPaid.toStringAsFixed(2)} USD',
+                  Text('Abonado: $\${totalPaid.toStringAsFixed(2)} USD',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isCovered ? const Color(0xFF34D399) : const Color(0xFFFBBF24))),
                   Text(
-                    'Faltante: \\\\\\\\$\\\\\\\${(totalAmount - totalPaid > 0 ? totalAmount - totalPaid : 0.0).toStringAsFixed(2)} USD',
+                    'Faltante: $\${(totalAmount - totalPaid > 0 ? totalAmount - totalPaid : 0.0).toStringAsFixed(2)} USD',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E)),
                   ),
                 ],
@@ -343,20 +355,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
                   children: [
                     Text(item.cardName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
                     const SizedBox(height: 2),
-                    Text('\\\\\\\${item.edition} · \\\\\\\${item.condition} \\\\\\\${item.foil ? "• FOIL" : ""}',
+                    Text('\${item.edition} · \${item.condition} \${item.foil ? "• FOIL" : ""}',
                         style: const TextStyle(fontSize: 11, color: Color(0xFF8B949E))),
                     const SizedBox(height: 4),
-                    Text('Comprador: \\\\\\\${item.buyerName}', style: const TextStyle(fontSize: 11, color: Color(0xFF58A6FF))),
+                    Text('Comprador: \${item.buyerName}', style: const TextStyle(fontSize: 11, color: Color(0xFF58A6FF))),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('\\\\\\\${item.quantity}x \\\\\\\\$\\\\\\\${item.price.toStringAsFixed(2)}',
+                  Text('\${item.quantity}x $\${item.price.toStringAsFixed(2)}',
                       style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('\\\\\\\\$\\\\\\\${(item.price * item.quantity).toStringAsFixed(2)} USD',
+                  Text('$\${(item.price * item.quantity).toStringAsFixed(2)} USD',
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF34D399))),
                 ],
               ),
@@ -390,11 +402,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               children: [
                 _buildSummaryRow('Estado de la Orden', order.status.toUpperCase()),
                 _buildSummaryRow('Fecha de Creación', DateFormat('dd/MM/yyyy HH:mm').format(order.createdAt)),
-                _buildSummaryRow('Total Cartas', '\\\\$totalCards unidades'),
-                _buildSummaryRow('Subtotal Cartas', '\\\\\\\\$\\\\\\\${totalCardsAmount.toStringAsFixed(2)} USD'),
-                _buildSummaryRow('Costo de Envío Global', '\\\\\\\\$\\\\\\\${shippingCost.toStringAsFixed(2)} USD'),
+                _buildSummaryRow('Total Cartas', '$totalCards unidades'),
+                _buildSummaryRow('Subtotal Cartas', '$\${totalCardsAmount.toStringAsFixed(2)} USD'),
+                _buildSummaryRow('Costo de Envío Global', '$\${shippingCost.toStringAsFixed(2)} USD'),
                 const Divider(color: Color(0xFF30363D), height: 24),
-                _buildSummaryRow('TOTAL GLOBAL A PAGAR', '\\\\\\\\$\\\\\\\${(totalCardsAmount + shippingCost).toStringAsFixed(2)} USD', isBold: true),
+                _buildSummaryRow('TOTAL GLOBAL A PAGAR', '$\${(totalCardsAmount + shippingCost).toStringAsFixed(2)} USD', isBold: true),
               ],
             ),
           ),
@@ -483,6 +495,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
       orderId: widget.orderId,
       items: items,
       onProceedToCartPusher: () {
+        _triggerCartPusher(items);
+      },
+    );
+  }
+
+  void _triggerCartPusher(List<OrderItem> items) {
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFEF4444),
+          content: Text('No hay cartas en la orden para lanzar al carrito.'),
+        ),
+      );
+      return;
+    }
+
+    OneByOneCartPusherDialog.show(
+      context,
+      orderId: widget.orderId,
+      items: items,
+      onOpenCart: () {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => CkWebViewScreen(
@@ -490,6 +523,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen>
               currentUserEmail: widget.currentUserEmail,
               currentUserName: '',
               isAdmin: widget.isAdmin,
+              initialUrl: 'https://www.cardkingdom.com/cart',
             ),
           ),
         );
