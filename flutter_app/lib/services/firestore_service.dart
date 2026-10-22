@@ -148,6 +148,21 @@ class FirestoreService {
     await _db.collection('purchase_orders').doc(orderId).collection('items').doc(itemId).delete();
   }
 
+  Future<void> updateOrderItemDetails({
+    required String orderId,
+    required String itemId,
+    required int quantity,
+    required String condition,
+    required double price,
+  }) async {
+    await _db.collection('purchase_orders').doc(orderId).collection('items').doc(itemId).update({
+      'quantity': quantity,
+      'condition': condition,
+      'price': price,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // ==========================================
   // PAGOS / ABONOS (payments)
   // ==========================================

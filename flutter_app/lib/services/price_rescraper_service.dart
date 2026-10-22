@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html_parser;
 import '../models/purchases_models.dart';
 import 'firestore_service.dart';
+import 'ck_scraper_service.dart';
 
 /// =========================================================================
 /// SERVICIO: RE-SCANEO Y ACTUALIZADOR DE PRECIOS CARD KINGDOM (§7.1, §8.3)
 ///
 /// Características:
 /// - Filtro opcional por regla de elegibilidad (§2.4).
-/// - Consulta HTTP a Card Kingdom con headers de navegador.
-/// - Parser robusto de HTML (.styleList, .variation-row, .styleItem).
+/// - Resuelve CORS automáticamente en Web mediante CkScraperService.
+/// - Consulta nativa directa sin restricciones CORS en Android / iOS.
 /// - Detección de agotado / sold out y cálculo preciso de delta ($ USD).
 /// - Actualización por lotes en Firestore.
 /// =========================================================================
@@ -40,90 +39,53 @@ class RescrapeResult {
 class PriceRescraperService {
   final FirestoreService _firestore = FirestoreService();
 
-  /// Re-escaneo reactivo de lista de ítems mediante Stream
+  /// Re-escaneo reactivo de lista de ítems mediante Stream (compatible con Web y Móvil)
   static Stream<RescrapeResult> rescrapeEligibleItems(
     List<OrderItem> items, {
     bool onlyEligible = false,
     Duration delay = const Duration(milliseconds: 350),
   }) async* {
-    final client = http.Client();
     final targetList = onlyEligible
         ? items.where((i) => i.needsPriceRefresh).toList()
         : items.where((i) => i.pageUrl.trim().isNotEmpty).toList();
 
-    try {
-      for (final item in targetList) {
-        double foundPrice = item.price;
-        bool inStock = true;
-        int stockCount = 1;
+    for (final item in targetList) {
+      double foundPrice = item.price;
+      bool inStock = true;
+      int stockCount = 1;
 
-        try {
-          final uri = Uri.parse(item.pageUrl);
-          final response = await client.get(
-            uri,
-            headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml',
-            },
-          ).timeout(const Duration(seconds: 4));
+      try {
+        final scraped = await CkScraperService.scrapeCard(item.pageUrl);
+        if (scraped != null && scraped.variations.isNotEmpty) {
+          // Buscar variación que coincida con la condición de la carta (NM, EX, VG, G)
+          final variation = scraped.variations.firstWhere(
+            (v) => v.condition.toUpperCase() == item.condition.toUpperCase(),
+            orElse: () => scraped.variations.first,
+          );
 
-          if (response.statusCode == 200) {
-            final doc = html_parser.parse(response.body);
-            final rows = doc.querySelectorAll('.itemQty, .styleList tr, .variation-row, .style-table tr, .styleItem');
-
-            bool matched = false;
-            for (final row in rows) {
-              final text = row.text;
-              if (text.toUpperCase().contains(item.condition.toUpperCase())) {
-                final match = RegExp(r'\\$\\s*([0-9]+\\.[0-9]{2})').firstMatch(text);
-                if (match != null) {
-                  foundPrice = double.tryParse(match.group(1) ?? '') ?? item.price;
-                  matched = true;
-                }
-                if (text.toLowerCase().contains('out of stock') ||
-                    text.toLowerCase().contains('sold out') ||
-                    text.toLowerCase().contains('agotado')) {
-                  inStock = false;
-                  stockCount = 0;
-                }
-                break;
-              }
-            }
-
-            if (!matched) {
-              // Intento con selector directo de precio principal
-              final mainPriceEl = doc.querySelector('.price, .style-price, .productPrice');
-              if (mainPriceEl != null) {
-                final match = RegExp(r'\\$\\s*([0-9]+\\.[0-9]{2})').firstMatch(mainPriceEl.text);
-                if (match != null) {
-                  foundPrice = double.tryParse(match.group(1) ?? '') ?? item.price;
-                }
-              }
-            }
-          }
-        } catch (_) {
-          // Fallback seguro: mantener precio o pequeña fluctuación simulada si se ejecuta offline
-          foundPrice = item.price;
-          inStock = item.inStock;
-          stockCount = item.availableQty;
+          foundPrice = variation.price > 0 ? variation.price : item.price;
+          inStock = variation.stock > 0;
+          stockCount = variation.stock;
         }
-
-        final delta = double.parse((foundPrice - item.price).toStringAsFixed(2));
-
-        yield RescrapeResult(
-          item: item,
-          oldPrice: item.price,
-          currentPrice: foundPrice,
-          delta: delta,
-          inStock: inStock,
-          stockCount: stockCount,
-        );
-
-        await Future.delayed(delay);
+      } catch (_) {
+        // Fallback seguro: mantener precio existente si la red falla
+        foundPrice = item.price;
+        inStock = item.inStock;
+        stockCount = item.availableQty;
       }
-    } finally {
-      client.close();
+
+      final delta = double.parse((foundPrice - item.price).toStringAsFixed(2));
+
+      yield RescrapeResult(
+        item: item,
+        oldPrice: item.price,
+        currentPrice: foundPrice,
+        delta: delta,
+        inStock: inStock,
+        stockCount: stockCount,
+      );
+
+      await Future.delayed(delay);
     }
   }
 
